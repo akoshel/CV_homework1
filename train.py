@@ -123,7 +123,7 @@ def main(args):
 
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, amsgrad=True)
     loss_fn = fnn.mse_loss
-    lr_scheduler = ReduceLROnPlateau(optimizer, patience=10)
+    lr_scheduler = ReduceLROnPlateau(optimizer, patience=39)
 
     # 2. train & validate
     print("Ready for training...")
