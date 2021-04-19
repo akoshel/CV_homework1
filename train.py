@@ -150,6 +150,8 @@ def main(args):
     print("Creating model...")
     # model = models.resnet18(pretrained=True)
     model = models.resnext50_32x4d(pretrained=True)
+    checkpoint = torch.load("./runs/baseline_full_best.pth", map_location='cpu')
+    model.load_state_dict(checkpoint, strict=True)
     # model.requires_grad_(False)
     model.fc = nn.Linear(model.fc.in_features, 2 * NUM_PTS, bias=True)
     # model.fc.requires_grad_(True)
