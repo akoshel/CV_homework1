@@ -45,7 +45,7 @@ def train(model, loader, loss_fn, optimizer, device):
         landmarks = batch["landmarks"]  # B x (2 * NUM_PTS)
 
         pred_landmarks = model(images).cpu()  # B x (2 * NUM_PTS)
-        loss = loss_fn(pred_landmarks, landmarks, reduction="mean")
+        loss = loss_fn(pred_landmarks, landmarks) #, reduction="mean"
         train_loss.append(loss.item())
 
         optimizer.zero_grad()
@@ -68,7 +68,7 @@ def validate(model, loader, loss_fn, device):
 
         with torch.no_grad():
             pred_landmarks = model(images).cpu()
-        loss = loss_fn(pred_landmarks, landmarks, reduction="mean")
+        loss = loss_fn(pred_landmarks, landmarks) #, reduction="mean"
         val_loss.append(loss.item())
         weights_mse = (1 / batch['scale_coef']) ** 2
         mse_loss = weighted_mse_loss(pred_landmarks,
