@@ -70,7 +70,7 @@ def validate(model, loader, loss_fn, device):
         with torch.no_grad():
             pred_landmarks = model(images).cpu()
         # loss = loss_fn(pred_landmarks, landmarks, reduction="mean")
-        oss = loss_fn(pred_landmarks, landmarks)
+        loss = loss_fn(pred_landmarks, landmarks)
         val_loss.append(loss.item())
         weights_mse = (1 / batch['scale_coef']) ** 2
         mse_loss = weighted_mse_loss(pred_landmarks,
