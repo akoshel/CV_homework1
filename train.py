@@ -166,7 +166,7 @@ def main(args):
     # criterion = torch.nn.MSELoss(size_average=True)
     # loss_fn = fnn.mse_loss
     # criterion = fnn.l1_loss
-    # lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+    lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode='min', factor=1/np.sqrt(10),
         patience=4,
         verbose=True, threshold=0.01,
