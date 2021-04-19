@@ -45,7 +45,7 @@ def train(model, loader, loss_fn, optimizer, device):
         landmarks = batch["landmarks"]  # B x (2 * NUM_PTS)
 
         pred_landmarks = model(images).cpu()  # B x (2 * NUM_PTS)
-        loss = loss_fn(pred_landmarks, landmarks) #, reduction="mean"
+        loss = loss_fn(pred_landmarks, landmarks, reduction="mean")
         train_loss.append(loss.item())
 
         optimizer.zero_grad()
@@ -68,7 +68,7 @@ def validate(model, loader, loss_fn, device):
 
         with torch.no_grad():
             pred_landmarks = model(images).cpu()
-        loss = loss_fn(pred_landmarks, landmarks) #, reduction="mean"
+        loss = loss_fn(pred_landmarks, landmarks, reduction="mean") #, reduction="mean"
         val_loss.append(loss.item())
         weights_mse = (1 / batch['scale_coef']) ** 2
         mse_loss = weighted_mse_loss(pred_landmarks,
@@ -162,10 +162,10 @@ def main(args):
     # model.to(device)
 
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, amsgrad=True)
-    criterion = AdaptiveWingLoss()
+    # criterion = AdaptiveWingLoss()
     # criterion = torch.nn.MSELoss(size_average=True)
     # loss_fn = fnn.mse_loss
-    # criterion = fnn.l1_loss
+    criterion = fnn.l1_loss
     lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode='min', factor=1/np.sqrt(10),
         patience=4,
