@@ -102,46 +102,46 @@ def main(args):
     os.makedirs("runs", exist_ok=True)
 
     # 1. prepare data & models
-    # train_transforms = transforms.Compose([
-    #     ScaleMinSideToSize((CROP_SIZE, CROP_SIZE)),
-    #     CropCenter(CROP_SIZE),
-    #     TransformByKeys(transforms.ToPILImage(), ("image",)),
-    #     TransformByKeys(transforms.ToTensor(), ("image",)),
-    #     TransformByKeys(transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.25, 0.25, 0.25]), ("image",)), # (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
-    # ])
+    train_transforms = transforms.Compose([
+        ScaleMinSideToSize((CROP_SIZE, CROP_SIZE)),
+        CropCenter(CROP_SIZE),
+        TransformByKeys(transforms.ToPILImage(), ("image",)),
+        TransformByKeys(transforms.ToTensor(), ("image",)),
+        TransformByKeys(transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]), ("image",)), # (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
+    ])
 
     crop_size = (224, 224)
-    train_transforms = transforms.Compose([
-        CropFrame(9),
-        ScaleMinSideToSize(crop_size),
-        FlipHorizontal(),
-        Rotator(30),
-        CropRectangle(crop_size),
-        ChangeBrightnessContrast(alpha_std=0.05, beta_std=10),
-        TransformByKeys(transforms.ToPILImage(), ("image",)),
-        TransformByKeys(transforms.ToTensor(), ("image",)),
-        TransformByKeys(transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                             std=[0.229, 0.224, 0.225]),
-                        ("image",)
-                        ),
-    ])
-
-    valid_transforms = transforms.Compose([
-        CropFrame(9),
-        ScaleMinSideToSize(crop_size),
-        CropRectangle(crop_size),
-        TransformByKeys(transforms.ToPILImage(), ("image",)),
-        TransformByKeys(transforms.ToTensor(), ("image",)),
-        TransformByKeys(transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                             std=[0.229, 0.224, 0.225]),
-                        ("image",)
-                        ),
-    ])
+    # train_transforms = transforms.Compose([
+    #     CropFrame(9),
+    #     ScaleMinSideToSize(crop_size),
+    #     FlipHorizontal(),
+    #     Rotator(30),
+    #     CropRectangle(crop_size),
+    #     ChangeBrightnessContrast(alpha_std=0.05, beta_std=10),
+    #     TransformByKeys(transforms.ToPILImage(), ("image",)),
+    #     TransformByKeys(transforms.ToTensor(), ("image",)),
+    #     TransformByKeys(transforms.Normalize(mean=[0.485, 0.456, 0.406],
+    #                                          std=[0.229, 0.224, 0.225]),
+    #                     ("image",)
+    #                     ),
+    # ])
+    #
+    # valid_transforms = transforms.Compose([
+    #     CropFrame(9),
+    #     ScaleMinSideToSize(crop_size),
+    #     CropRectangle(crop_size),
+    #     TransformByKeys(transforms.ToPILImage(), ("image",)),
+    #     TransformByKeys(transforms.ToTensor(), ("image",)),
+    #     TransformByKeys(transforms.Normalize(mean=[0.485, 0.456, 0.406],
+    #                                          std=[0.229, 0.224, 0.225]),
+    #                     ("image",)
+    #                     ),
+    # ])
     print("Reading data...")
     train_dataset = ThousandLandmarksDataset(os.path.join(args.data, "train"), train_transforms, split="train")
     train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, num_workers=4, pin_memory=True,
                                   shuffle=True, drop_last=True)
-    val_dataset = ThousandLandmarksDataset(os.path.join(args.data, "train"), valid_transforms, split="val")
+    val_dataset = ThousandLandmarksDataset(os.path.join(args.data, "train"), train_transforms, split="val")
     val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, num_workers=4, pin_memory=True,
                                 shuffle=False, drop_last=False)
 
