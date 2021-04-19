@@ -76,6 +76,173 @@ class TransformByKeys(object):
 
         return sample
 
+class CropRectangle(object):
+    def __init__(self, size=(CROP_SIZE_H, CROP_SIZE_W), elem_name='image'):
+        self.size = size
+        self.elem_name = elem_name
+
+    def __call__(self, sample):
+        img = sample[self.elem_name]
+        h, w, _ = img.shape
+
+        margin_h = (h - self.size[0]) // 2
+        margin_w = (w - self.size[1]) // 2
+        sample[self.elem_name] = img[margin_h:margin_h + self.size[0], margin_w:margin_w + self.size[1]]
+        sample["crop_margin_x"] = margin_w
+        sample["crop_margin_y"] = margin_h
+
+        if 'landmarks' in sample:
+            landmarks = sample['landmarks'].reshape(-1, 2)
+            # print('Crop')
+            # print(landmarks[:5])
+            landmarks -= torch.tensor((margin_w, margin_h), dtype=landmarks.dtype)[None, :]
+            # print(landmarks[:5])
+            # print('End crop')
+            sample['landmarks'] = landmarks.reshape(-1)
+
+        return sample
+
+
+# Преобразование для удаление черной рамки вокруг изображения
+class CropFrame(object):
+    def __init__(self, limit=9, elem_name='image'):
+        self.limit = limit
+        self.elem_name = elem_name
+
+    def __call__(self, sample):
+        img = sample[self.elem_name]
+        h, w, _ = img.shape
+
+        brightness = np.mean(img, axis=2)
+        top = 0
+        while (top < h) and np.max(brightness[top, :]) <= self.limit:
+            top += 1
+
+        bottom = h - 1
+        while (bottom > 0) and np.max(brightness[bottom, :]) <= self.limit:
+            bottom += -1
+
+        left = 0
+        while (left < w) and np.max(brightness[:, left]) <= self.limit:
+            left += 1
+
+        right = w - 1
+        while (right > 0) and np.max(brightness[:, right]) <= self.limit:
+            right += -1
+
+        sample[self.elem_name] = img[top:bottom+1, left:right+1, :]
+
+        sample["crop_top"] = top
+        sample["crop_left"] = left
+
+        if 'landmarks' in sample:
+            landmarks = sample['landmarks'].reshape(-1, 2)
+            landmarks -= torch.tensor((left, top), dtype=landmarks.dtype)[None, :]
+            sample['landmarks'] = landmarks.reshape(-1)
+
+        return sample
+
+
+# Преобразование - отражение от вертикальной оси
+class FlipHorizontal(object):
+    def __init__(self, p=0.5, elem_name='image'):
+        self.elem_name = elem_name
+        self.p = p
+
+    def __call__(self, sample):
+        if random.random() < self.p:
+            w = sample[self.elem_name].shape[1]
+
+            sample[self.elem_name] = cv2.flip(sample[self.elem_name], 1)
+
+            if 'landmarks' in sample:
+                landmarks = sample['landmarks'].reshape(-1, 2)
+                landmarks[:, 0] = torch.tensor(w, dtype=landmarks.dtype) - landmarks[:, 0]
+                final_landmarks = landmarks.clone()
+                # Низ овала лица
+                final_landmarks[:64] = landmarks[64:128]
+                final_landmarks[64:128] = landmarks[:64]
+
+                # Верх овала лица
+                final_landmarks[128:273] = landmarks[128:273].flip(0)
+
+                # Брови
+                final_landmarks[273:337] = landmarks[337:401]
+                final_landmarks[337:401] = landmarks[273:337]
+
+                # Нос
+                final_landmarks[401:464] = landmarks[464:527]
+                final_landmarks[464:527] = landmarks[401:464]
+
+                # Глаза
+                final_landmarks[587:714] = landmarks[714:841]
+                final_landmarks[714:841] = landmarks[587:714]
+
+                # Верхняя губа верх
+                final_landmarks[841:873] = landmarks[841:873].flip(0)
+                final_landmarks[873:905] = landmarks[873:905].flip(0)
+
+                # Верхняя нуба низ
+                final_landmarks[905:937] = landmarks[905:937].flip(0)
+                final_landmarks[937:969] = landmarks[937:969].flip(0)
+
+                # Глаза
+                final_landmarks[969:972] = landmarks[969:972].flip(0)
+
+                sample['landmarks'] = final_landmarks.reshape(-1)
+
+        return sample
+
+
+# Преобразование - изменение яркость/контрастности
+class ChangeBrightnessContrast(object):
+    def __init__(self, alpha_std=1, beta_std=0, elem_name='image'):
+        self.elem_name = elem_name
+        self.alpha_std = alpha_std
+        self.beta_std = beta_std
+
+    def __call__(self, sample):
+        alpha = np.random.normal(1.0, self.alpha_std)
+        beta = np.random.normal(0.0, self.beta_std)
+        sample[self.elem_name] = cv2.convertScaleAbs(sample[self.elem_name],
+                                                     alpha=alpha,
+                                                     beta=beta)
+        return sample
+
+
+# Преобразование - поворот вокруг центра
+class Rotator(object):
+    def __init__(self, max_angle=0, elem_name='image'):
+        self.elem_name = elem_name
+        self.max_angle = max_angle
+
+    def __call__(self, sample):
+        angle = random.uniform(-self.max_angle, self.max_angle)
+        center = (sample[self.elem_name].shape[0]//2,
+                  sample[self.elem_name].shape[1] // 2)
+        rot_mat = cv2.getRotationMatrix2D(center, angle, 1)
+        sample[self.elem_name] = cv2.warpAffine(
+            sample[self.elem_name],
+            rot_mat,
+            (sample[self.elem_name].shape[1],
+                sample[self.elem_name].shape[0]
+             )
+        )
+        if 'landmarks' in sample:
+            landmarks = sample['landmarks'].float()
+            landmarks = self.rotate_landmarks(center, landmarks, angle)
+            sample['landmarks'] = landmarks.reshape(-1)
+        return sample
+
+    def rotate_landmarks(self, center, points, angle):
+        x_c, y_c = center
+        angle_rad = -angle * np.pi / 180
+        points = points.reshape(-1, 2)
+        landmarks = points.clone().detach()
+        landmarks[:, 0] = x_c + np.cos(angle_rad) * (points[:, 0] - x_c) - np.sin(angle_rad) * (points[:, 1] - y_c)
+        landmarks[:, 1] = y_c + np.sin(angle_rad) * (points[:, 0] - x_c) + np.cos(angle_rad) * (points[:, 1] - y_c)
+        return landmarks
+
 
 class ThousandLandmarksDataset(data.Dataset):
     def __init__(self, root, transforms, split="train"):
