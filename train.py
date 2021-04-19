@@ -19,6 +19,7 @@ from utils import NUM_PTS, CROP_SIZE
 from utils import ScaleMinSideToSize, CropCenter, TransformByKeys
 from utils import ThousandLandmarksDataset
 from utils import restore_landmarks_batch, create_submission
+from utils import AdaptiveWingLoss
 
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
@@ -131,7 +132,7 @@ def main(args):
     # model.to(device)
 
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, amsgrad=True)
-    criterion = nn.AdaptiveWingLoss(whetherWeighted=True)
+    criterion = AdaptiveWingLoss(whetherWeighted=True)
     # criterion = torch.nn.MSELoss(size_average=True)
     # loss_fn = fnn.mse_loss
     lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(
