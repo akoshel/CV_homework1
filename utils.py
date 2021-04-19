@@ -251,7 +251,7 @@ class ThousandLandmarksDataset(data.Dataset):
     def __init__(self, root, transforms, split="train"):
         super(ThousandLandmarksDataset, self).__init__()
         self.root = root
-        landmark_file_name = os.path.join(root, 'landmarks_smooth.csv') if split != "test" \
+        landmark_file_name = os.path.join(root, 'landmarks.csv') if split != "test" \
             else os.path.join(root, "test_points.csv")
         images_root = os.path.join(root, "images")
 
