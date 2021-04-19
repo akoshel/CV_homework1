@@ -55,9 +55,13 @@ def train(model, loader, loss_fn, optimizer, lr_scheduler, device):
     return np.mean(train_loss)
 
 
+def weighted_mse_loss(preds, ground_true, weights):
+    return torch.mean(weights * torch.mean((preds - ground_true) ** 2, axis=1))
+
 def validate(model, loader, loss_fn, device):
     model.eval()
     val_loss = []
+    val_mse_loss = []
     for batch in tqdm.tqdm(loader, total=len(loader), desc="validation..."):
         images = batch["image"].to(device)
         landmarks = batch["landmarks"]
@@ -66,8 +70,13 @@ def validate(model, loader, loss_fn, device):
             pred_landmarks = model(images).cpu()
         loss = loss_fn(pred_landmarks, landmarks, reduction="mean")
         val_loss.append(loss.item())
+        weights_mse = (1 / batch['scale_coef']) ** 2
+        mse_loss = weighted_mse_loss(pred_landmarks,
+                                     landmarks,
+                                     weights_mse)
+        val_mse_loss.append(mse_loss.item())
 
-    return np.mean(val_loss)
+    return (np.mean(val_loss), np.mean(val_mse_loss))
 
 
 def predict(model, loader, device):
@@ -114,24 +123,28 @@ def main(args):
     print("Creating model...")
     # model = models.resnet18(pretrained=True)
     model = models.resnext50_32x4d(pretrained=True)
-    model.requires_grad_(False)
-
+    # model.requires_grad_(False)
     model.fc = nn.Linear(model.fc.in_features, 2 * NUM_PTS, bias=True)
-    model.fc.requires_grad_(True)
-
+    # model.fc.requires_grad_(True)
     model.to(device)
+    for p in model.parameters():
+        p.requires_grad = True
+    # model.to(device)
 
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, amsgrad=True)
-    loss_fn = fnn.mse_loss
+    criterion = nn.AdaptiveWingLoss(whetherWeighted=True)
+    # criterion = torch.nn.MSELoss(size_average=True)
+    # loss_fn = fnn.mse_loss
     lr_scheduler = ReduceLROnPlateau(optimizer, patience=39*10)
 
     # 2. train & validate
     print("Ready for training...")
     best_val_loss = np.inf
     for epoch in range(args.epochs):
-        train_loss = train(model, train_dataloader, loss_fn, optimizer, lr_scheduler, device=device)
-        val_loss = validate(model, val_dataloader, loss_fn, device=device)
-        print("Epoch #{:2}:\ttrain loss: {:5.2}\tval loss: {:5.2}".format(epoch, train_loss, val_loss))
+        train_loss = train(model, train_dataloader, criterion, optimizer, lr_scheduler, device=device)
+        val_loss, mse_loss = validate(model, val_dataloader, criterion, device=device)
+        print("Epoch #{:2}:\ttrain loss: {:5.2}\tval loss: {:5.2}\tmse loss: {:5.2}".format(
+            epoch, train_loss, val_loss, mse_loss))
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             with open(os.path.join("runs", f"{args.name}_best.pth"), "wb") as fp:
