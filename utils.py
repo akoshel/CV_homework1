@@ -169,30 +169,40 @@ def create_submission(path_to_data, test_predictions, path_to_submission_file):
 
 
 class AdaptiveWingLoss(nn.Module):
-    def __init__(self, omega=14, theta=0.5, epsilon=1, alpha=2.1):
-        super(AdaptiveWingLoss, self).__init__()
-        self.omega = omega
-        self.theta = theta
-        self.epsilon = epsilon
-        self.alpha = alpha
+  def __init__(self, alpha=2.1, omega=14.0, theta=0.5, epsilon=1.0,\
+               whetherWeighted=False, dilaStru=3, w=10, device="cuda"):
+    super(AdaptiveWingLoss, self).__init__()
+    self.device = device
+    self.alpha = torch.Tensor([alpha]).to(device)
+    self.omega = torch.Tensor([omega]).to(device)
+    self.theta = torch.Tensor([theta]).to(device)
+    self.epsilon = torch.Tensor([epsilon]).to(device)
+    self.dilationStru = dilaStru
+    self.w = torch.Tensor([w]).to(device)
+    self.tmp = torch.Tensor([self.theta / self.epsilon]).to(device)
+    self.wetherWeighted = whetherWeighted
 
-    def forward(self, pred, target):
-        '''
-        :param pred: BxNxHxH
-        :param target: BxNxHxH
-        :return:
-        '''
+'''
+   #param predictions: predicted heat map with dimension of batchSize * landmarkNum * heatMapSize * heatMapSize  
+   #param targets: ground truth heat map with dimension of batchSize * landmarkNum * heatMapSize * heatMapSize  
+'''
+  def forward(self, predictions, targets):
+    deltaY = predictions - targets
+    deltaY = torch.abs(deltaY)
+    alphaMinusY = self.alpha - targets
+    a = self.omega / self.epsilon * alphaMinusY / (1 + self.tmp.pow(alphaMinusY))\
+        * self.tmp.pow(alphaMinusY - 1)
+    c = self.theta * a - self.omega * torch.log(1 + self.tmp.pow(alphaMinusY))
 
-        y = target
-        y_hat = pred
-        delta_y = (y - y_hat).abs()
-        delta_y1 = delta_y[delta_y < self.theta]
-        delta_y2 = delta_y[delta_y >= self.theta]
-        y1 = y[delta_y < self.theta]
-        y2 = y[delta_y >= self.theta]
-        loss1 = self.omega * torch.log(1 + torch.pow(delta_y1 / self.omega, self.alpha - y1))
-        A = self.omega * (1 / (1 + torch.pow(self.theta / self.epsilon, self.alpha - y2))) * (self.alpha - y2) * (
-            torch.pow(self.theta / self.epsilon, self.alpha - y2 - 1)) * (1 / self.epsilon)
-        C = self.theta * A - self.omega * torch.log(1 + torch.pow(self.theta / self.epsilon, self.alpha - y2))
-        loss2 = A * delta_y2 - C
-        return (loss1.sum() + loss2.sum()) / (len(loss1) + len(loss2))
+    l = torch.where(deltaY < self.theta,
+                    self.omega * torch.log(1 + (deltaY / self.epsilon).pow(alphaMinusY)),
+                    a * deltaY - c)
+    if self.wetherWeighted:
+      weightMap = self.grayDilation(targets, self.dilationStru)
+      weightMap = torch.where(weightMap >= 0.2, torch.Tensor([1]).to(self.device),\
+                              torch.Tensor([0]).to(self.device))
+      l = l * (self.w * weightMap + 1)
+
+    l = torch.mean(l)
+
+    return l
