@@ -45,7 +45,8 @@ def train(model, loader, loss_fn, optimizer, device):
         landmarks = batch["landmarks"]  # B x (2 * NUM_PTS)
 
         pred_landmarks = model(images).cpu()  # B x (2 * NUM_PTS)
-        loss = loss_fn(pred_landmarks, landmarks, reduction="mean")
+        # loss = loss_fn(pred_landmarks, landmarks, reduction="mean")
+        loss = loss_fn(pred_landmarks, landmarks)
         train_loss.append(loss.item())
 
         optimizer.zero_grad()
