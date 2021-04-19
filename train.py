@@ -102,46 +102,46 @@ def main(args):
     os.makedirs("runs", exist_ok=True)
 
     # 1. prepare data & models
-    train_transforms = transforms.Compose([
-        ScaleMinSideToSize((CROP_SIZE, CROP_SIZE)),
-        CropCenter(CROP_SIZE),
-        TransformByKeys(transforms.ToPILImage(), ("image",)),
-        TransformByKeys(transforms.ToTensor(), ("image",)),
-        TransformByKeys(transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]), ("image",)), # (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
-    ])
+    # train_transforms = transforms.Compose([
+    #     ScaleMinSideToSize((CROP_SIZE, CROP_SIZE)),
+    #     CropCenter(CROP_SIZE),
+    #     TransformByKeys(transforms.ToPILImage(), ("image",)),
+    #     TransformByKeys(transforms.ToTensor(), ("image",)),
+    #     TransformByKeys(transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]), ("image",)), # (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
+    # ])
 
     crop_size = (224, 224)
-    # train_transforms = transforms.Compose([
-    #     CropFrame(9),
-    #     ScaleMinSideToSize(crop_size),
-    #     FlipHorizontal(),
-    #     Rotator(30),
-    #     CropRectangle(crop_size),
-    #     ChangeBrightnessContrast(alpha_std=0.05, beta_std=10),
-    #     TransformByKeys(transforms.ToPILImage(), ("image",)),
-    #     TransformByKeys(transforms.ToTensor(), ("image",)),
-    #     TransformByKeys(transforms.Normalize(mean=[0.485, 0.456, 0.406],
-    #                                          std=[0.229, 0.224, 0.225]),
-    #                     ("image",)
-    #                     ),
-    # ])
-    #
-    # valid_transforms = transforms.Compose([
-    #     CropFrame(9),
-    #     ScaleMinSideToSize(crop_size),
-    #     CropRectangle(crop_size),
-    #     TransformByKeys(transforms.ToPILImage(), ("image",)),
-    #     TransformByKeys(transforms.ToTensor(), ("image",)),
-    #     TransformByKeys(transforms.Normalize(mean=[0.485, 0.456, 0.406],
-    #                                          std=[0.229, 0.224, 0.225]),
-    #                     ("image",)
-    #                     ),
-    # ])
+    train_transforms = transforms.Compose([
+        CropFrame(9),
+        ScaleMinSideToSize(crop_size),
+        FlipHorizontal(),
+        Rotator(30),
+        CropRectangle(crop_size),
+        ChangeBrightnessContrast(alpha_std=0.05, beta_std=10),
+        TransformByKeys(transforms.ToPILImage(), ("image",)),
+        TransformByKeys(transforms.ToTensor(), ("image",)),
+        TransformByKeys(transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                             std=[0.229, 0.224, 0.225]),
+                        ("image",)
+                        ),
+    ])
+
+    valid_transforms = transforms.Compose([
+        CropFrame(9),
+        ScaleMinSideToSize(crop_size),
+        CropRectangle(crop_size),
+        TransformByKeys(transforms.ToPILImage(), ("image",)),
+        TransformByKeys(transforms.ToTensor(), ("image",)),
+        TransformByKeys(transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                             std=[0.229, 0.224, 0.225]),
+                        ("image",)
+                        ),
+    ])
     print("Reading data...")
     train_dataset = ThousandLandmarksDataset(os.path.join(args.data, "train"), train_transforms, split="train")
     train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, num_workers=4, pin_memory=True,
                                   shuffle=True, drop_last=True)
-    val_dataset = ThousandLandmarksDataset(os.path.join(args.data, "train"), train_transforms, split="val")
+    val_dataset = ThousandLandmarksDataset(os.path.join(args.data, "train"), valid_transforms, split="val")
     val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, num_workers=4, pin_memory=True,
                                 shuffle=False, drop_last=False)
 
@@ -151,7 +151,7 @@ def main(args):
     # model = models.resnet18(pretrained=True)
     model = models.resnext50_32x4d(pretrained=True)
     model.fc = nn.Linear(model.fc.in_features, 2 * NUM_PTS, bias=True)
-    checkpoint = torch.load("./runs/baseline_full2_best.pth", map_location='cpu')
+    checkpoint = torch.load("./runs/baseline_full3_best.pth", map_location='cpu')
     model.load_state_dict(checkpoint, strict=True)
     # model.requires_grad_(False)
 
@@ -162,11 +162,11 @@ def main(args):
     # model.to(device)
 
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, amsgrad=True)
-    # criterion = AdaptiveWingLoss(whetherWeighted=True)
+    criterion = AdaptiveWingLoss()
     # criterion = torch.nn.MSELoss(size_average=True)
     # loss_fn = fnn.mse_loss
-    criterion = fnn.l1_loss
-    lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+    # criterion = fnn.l1_loss
+    # lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode='min', factor=1/np.sqrt(10),
         patience=4,
         verbose=True, threshold=0.01,
