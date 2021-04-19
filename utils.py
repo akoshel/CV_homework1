@@ -7,6 +7,7 @@ import torch
 import tqdm
 from torch.utils import data
 import torch.nn as nn
+import random
 
 
 np.random.seed(1234)
