@@ -36,7 +36,7 @@ def parse_arguments():
     return parser.parse_args()
 
 
-def train(model, loader, loss_fn, optimizer, lr_scheduler, device):
+def train(model, loader, loss_fn, optimizer, device):
     model.train()
     train_loss = []
     for batch in tqdm.tqdm(loader, total=len(loader), desc="training..."):
@@ -50,7 +50,6 @@ def train(model, loader, loss_fn, optimizer, lr_scheduler, device):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        lr_scheduler.step(loss)
 
     return np.mean(train_loss)
 
@@ -135,14 +134,21 @@ def main(args):
     criterion = nn.AdaptiveWingLoss(whetherWeighted=True)
     # criterion = torch.nn.MSELoss(size_average=True)
     # loss_fn = fnn.mse_loss
-    lr_scheduler = ReduceLROnPlateau(optimizer, patience=39*10)
+    lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode='min', factor=1/np.sqrt(10),
+        patience=4,
+        verbose=True, threshold=0.01,
+        threshold_mode='abs', cooldown=0,
+        min_lr=1e-6, eps=1e-08
+    )
 
     # 2. train & validate
     print("Ready for training...")
     best_val_loss = np.inf
     for epoch in range(args.epochs):
-        train_loss = train(model, train_dataloader, criterion, optimizer, lr_scheduler, device=device)
+        train_loss = train(model, train_dataloader, criterion, optimizer, device=device)
         val_loss, mse_loss = validate(model, val_dataloader, criterion, device=device)
+        lr_scheduler.step(val_loss)
         print("Epoch #{:2}:\ttrain loss: {:5.2}\tval loss: {:5.2}\tmse loss: {:5.2}".format(
             epoch, train_loss, val_loss, mse_loss))
         if val_loss < best_val_loss:
