@@ -132,7 +132,7 @@ def main(args):
     # model.to(device)
 
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, amsgrad=True)
-    criterion = AdaptiveWingLoss(whetherWeighted=True)
+    criterion = AdaptiveWingLoss()
     # criterion = torch.nn.MSELoss(size_average=True)
     # loss_fn = fnn.mse_loss
     lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(
