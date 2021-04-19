@@ -182,10 +182,6 @@ class AdaptiveWingLoss(nn.Module):
     self.tmp = torch.Tensor([self.theta / self.epsilon]).to(device)
     self.wetherWeighted = whetherWeighted
 
-'''
-   #param predictions: predicted heat map with dimension of batchSize * landmarkNum * heatMapSize * heatMapSize  
-   #param targets: ground truth heat map with dimension of batchSize * landmarkNum * heatMapSize * heatMapSize  
-'''
   def forward(self, predictions, targets):
     deltaY = predictions - targets
     deltaY = torch.abs(deltaY)
