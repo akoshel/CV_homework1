@@ -114,9 +114,10 @@ def main(args):
     train_transforms = transforms.Compose([
         CropFrame(9),
         ScaleMinSideToSize((CROP_SIZE, CROP_SIZE)),
+        CropCenter(CROP_SIZE),
         FlipHorizontal(),
         Rotator(30),
-        CropRectangle(crop_size),
+        # CropRectangle(crop_size),
         ChangeBrightnessContrast(alpha_std=0.05, beta_std=10),
         TransformByKeys(transforms.ToPILImage(), ("image",)),
         TransformByKeys(transforms.ToTensor(), ("image",)),
@@ -128,8 +129,9 @@ def main(args):
 
     valid_transforms = transforms.Compose([
         CropFrame(9),
-        ScaleMinSideToSize(crop_size),
-        CropRectangle(crop_size),
+        ScaleMinSideToSize((CROP_SIZE, CROP_SIZE)),
+        CropCenter(CROP_SIZE),
+        # CropRectangle(crop_size),
         TransformByKeys(transforms.ToPILImage(), ("image",)),
         TransformByKeys(transforms.ToTensor(), ("image",)),
         TransformByKeys(transforms.Normalize(mean=[0.485, 0.456, 0.406],
