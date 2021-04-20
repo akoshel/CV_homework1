@@ -356,6 +356,7 @@ class AdaptiveWingLoss(nn.Module):
         y = target
         y_hat = pred
         delta_y = (y - y_hat).abs()
+        delta_y = (y - y_hat).abs()
         delta_y1 = delta_y[delta_y < self.theta]
         delta_y2 = delta_y[delta_y >= self.theta]
         y1 = y[delta_y < self.theta]

@@ -19,7 +19,7 @@ from utils import NUM_PTS, CROP_SIZE, CropFrame, FlipHorizontal, Rotator, CropRe
 from utils import ScaleMinSideToSize, CropCenter, TransformByKeys
 from utils import ThousandLandmarksDataset
 from utils import restore_landmarks_batch, create_submission
-from utils import AdaptiveWingLoss
+from model import RESNEXT_steroid
 
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
@@ -150,16 +150,18 @@ def main(args):
     device = torch.device("cuda:0") if args.gpu and torch.cuda.is_available() else torch.device("cpu")
 
     print("Creating model...")
-    # model = models.resnet18(pretrained=True)
-    model = models.resnext50_32x4d(pretrained=True)
-    model.fc = nn.Linear(model.fc.in_features, 2 * NUM_PTS, bias=True)
-    checkpoint = torch.load("./runs/baseline_full3_best.pth", map_location='cpu')
-    model.load_state_dict(checkpoint, strict=True)
-    # model.requires_grad_(False)
-
-    # model.fc.requires_grad_(True)
+    # model = models.resnext50_32x4d(pretrained=True)
+    # model.fc = nn.Linear(model.fc.in_features, 2 * NUM_PTS, bias=True)
+    # checkpoint = torch.load("./runs/baseline_full3_best.pth", map_location='cpu')
+    # model.load_state_dict(checkpoint, strict=True)
+    model = RESNEXT_steroid()
     model.to(device)
-    for p in model.parameters():
+    for p in model.base_net.parameters():
+        p.requires_grad = False
+    model.base_net[8].requires_grad = True
+    for p in model.linear7.parameters():
+        p.requires_grad = True
+    for p in model.linear1.parameters():
         p.requires_grad = True
     # model.to(device)
 
