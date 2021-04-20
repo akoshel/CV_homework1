@@ -55,7 +55,7 @@ class RESNEXT_steroid(nn.Module):
         model.load_state_dict(checkpoint, strict=True)
         self.base_net = nn.Sequential(*list(model.children())[:-2])
         out_size = model.fc.in_features
-        self.linear7 = ConvBlock(out_size, out_size, (5, 5), 1, 0, dw=True, linear=True) #(7x7)
+        self.linear7 = ConvBlock(out_size, out_size, (4, 4), 1, 0, dw=True, linear=True) #(7x7)
         self.linear1 = ConvBlock(out_size, 2 * NUM_PTS, 1, 1, 0, linear=True)
         self.attention = SEModule(out_size, 8)
 
