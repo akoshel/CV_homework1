@@ -29,7 +29,7 @@ class SEModule(nn.Module):
     '''Squeeze and Excitation Module'''
     def __init__(self, channels, reduction):
         super(SEModule, self).__init__()
-        # self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.fc1 = nn.Conv2d(channels, channels // reduction, kernel_size=1, padding=0, bias=False)
         self.relu = nn.ReLU(inplace=True)
         self.fc2 = nn.Conv2d(channels // reduction, channels, kernel_size=1, padding=0, bias=False)
@@ -37,7 +37,7 @@ class SEModule(nn.Module):
 
     def forward(self, x):
         input = x
-        # x = self.avg_pool(x)
+        x = self.avg_pool(x)
         x = self.fc1(x)
         x = self.relu(x)
         x = self.fc2(x)
@@ -53,7 +53,7 @@ class RESNEXT_steroid(nn.Module):
         model.fc = nn.Linear(model.fc.in_features, 2 * NUM_PTS, bias=True)
         checkpoint = torch.load("./runs/baseline_full4_best.pth", map_location='cpu')
         model.load_state_dict(checkpoint, strict=True)
-        self.base_net = nn.Sequential(*list(model.children())[:-1])
+        self.base_net = nn.Sequential(*list(model.children())[:-2])
         out_size = model.fc.in_features
         self.linear7 = ConvBlock(out_size, out_size, (5, 5), 1, 0, dw=True, linear=True) #(7x7)
         self.linear1 = ConvBlock(out_size, 2 * NUM_PTS, 1, 1, 0, linear=True)
