@@ -56,8 +56,10 @@ class RESNEXT_steroid(nn.Module):
         self.base_net = nn.Sequential(*list(model.children())[:-2])
         out_size = model.fc.in_features
         self.linear7 = ConvBlock(out_size, out_size, (4, 4), 1, 0, dw=True, linear=True) #(7x7)
-        self.linear1 = ConvBlock(out_size, 2 * NUM_PTS, 1, 1, 0, linear=True)
+        self.linear1 = ConvBlock(out_size, out_size, 1, 1, 0, linear=True)
         self.attention = SEModule(out_size, 8)
+        self.fc = nn.Linear(out_size, 2 * NUM_PTS, bias=True)
+
 
     def forward(self, x):
         x = self.base_net(x)
@@ -65,4 +67,5 @@ class RESNEXT_steroid(nn.Module):
         x = self.linear7(x)
         x = self.linear1(x)
         x = x.view(x.size(0), -1)
+        x = self.fc(x)
         return x

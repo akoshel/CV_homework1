@@ -159,6 +159,8 @@ def main(args):
     for p in model.base_net.parameters():
         p.requires_grad = False
     # model.base_net[8].requires_grad = True
+    for p in model.fc.parameters():
+        p.requires_grad = True
     for p in model.linear7.parameters():
         p.requires_grad = True
     for p in model.attention.parameters():
