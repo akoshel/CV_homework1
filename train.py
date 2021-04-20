@@ -113,7 +113,7 @@ def main(args):
     crop_size = (224, 224)
     train_transforms = transforms.Compose([
         CropFrame(9),
-        ScaleMinSideToSize(crop_size),
+        ScaleMinSideToSize((CROP_SIZE, CROP_SIZE)),
         FlipHorizontal(),
         Rotator(30),
         CropRectangle(crop_size),
